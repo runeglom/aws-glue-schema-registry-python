@@ -11,7 +11,7 @@ if sys.version_info[1] < 8:  # for py37
 else:
     from typing import Literal
 
-DataFormat = Literal['AVRO', 'JSON']
+DataFormat = Literal['AVRO', 'JSON', 'PROTOBUFV3']
 
 CompatibilityMode = Literal['NONE', 'DISABLED', 'BACKWARD', 'BACKWARD_ALL',
                             'FORWARD', 'FORWARD_ALL', 'FULL', 'FULL_ALL']
