@@ -3,6 +3,7 @@ import os
 import subprocess
 
 import pytest
+from google.protobuf.json_format import ParseDict
 
 from aws_schema_registry import DataAndSchema, SchemaRegistryClient
 from aws_schema_registry.avro import AvroSchema
@@ -10,6 +11,7 @@ from aws_schema_registry.jsonschema import JsonSchema
 from aws_schema_registry.adapter.kafka import (
     KafkaDeserializer, KafkaSerializer
 )
+from aws_schema_registry.protobufv3 import ProtobufV3Schema
 
 LOG = logging.getLogger(__name__)
 
@@ -19,6 +21,11 @@ JAR_LOCATION = os.path.join(
     'target',
     'java-integration-test.jar'
 )
+DATA = {
+    'name': 'John Doe',
+    'favorite_number': 6,
+    'favorite_color': 'red'
+}
 
 with open(os.path.join(os.path.dirname(__file__), 'user.avsc'), 'r') as f:
     SCHEMA = AvroSchema(f.read())
@@ -26,25 +33,27 @@ with open(os.path.join(os.path.dirname(__file__), 'user.avsc'), 'r') as f:
 with open(os.path.join(os.path.dirname(__file__), 'user.json'), 'r') as f:
     JSON_SCHEMA = JsonSchema(f.read())
 
+with open(os.path.join(os.path.dirname(__file__), 'user.proto'), 'r') as f:
+    PROTOBUFV3_SCHEMA = ProtobufV3Schema(f.read(), 'User')
+
 
 def _topic_name_schema_type_name_strategy(topic, is_key, schema):
     return f"{topic}-{'key' if is_key else 'value'}-{schema.data_format}"
 
 
-@pytest.mark.parametrize("schema", [SCHEMA, JSON_SCHEMA])
+@pytest.mark.parametrize("schema, data", [
+    (SCHEMA, DATA),
+    (JSON_SCHEMA, DATA),
+    (PROTOBUFV3_SCHEMA, ParseDict(DATA, PROTOBUFV3_SCHEMA._msg_obj))
+])
 def test_interop_with_java_library(glue_client, registry,
-                                   boto_session, schema):
+                                   boto_session, schema, data):
     client = SchemaRegistryClient(glue_client, registry_name=registry)
     serializer = KafkaSerializer(
         client,
         schema_naming_strategy=_topic_name_schema_type_name_strategy)
     deserializer = KafkaDeserializer(client)
 
-    data = {
-        'name': 'John Doe',
-        'favorite_number': 6,
-        'favorite_color': 'red'
-    }
     serialized: bytes = serializer.serialize(
         'test', DataAndSchema(data, schema)
     )

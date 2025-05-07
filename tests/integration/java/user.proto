@@ -1,0 +1,8 @@
+syntax = "proto3";
+package aws_schema_registry.integrationtests;
+
+message User {
+  string name = 1;
+  int32 favorite_number = 2;
+  string favorite_color = 3;
+}
